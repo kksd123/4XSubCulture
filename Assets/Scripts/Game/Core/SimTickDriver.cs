@@ -12,7 +12,7 @@ namespace Game.Core
                 Initialize();
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
             base.OnDestroy();
 
@@ -24,6 +24,36 @@ namespace Game.Core
             var reg = em.GetComponentData<SimIdRegistry>(m_registryEntity);
             if (reg.map.IsCreated)
                 reg.map.Dispose();
+        }
+
+        private void Update()
+        {
+            if (!m_initialized)
+                return;
+
+            var em = m_world.EntityManager;
+
+            m_accumulator += Time.deltaTime * 1000f;
+
+            int ticksThisFrame = 0;
+
+            float intervalMs = 0f;
+
+            while (ticksThisFrame < m_maxTicksPerFrame)
+            {
+                var clock = em.GetComponentData<SimClock>(m_clockEntity);
+
+                intervalMs = m_baseTickIntervalMs / (clock.gameSpeedX10 / 10f);
+
+                if (m_accumulator < intervalMs)
+                    break;
+
+                clock.currentTick += 1;
+                em.SetComponentData(m_clockEntity, clock);
+
+                m_accumulator -= intervalMs;
+                ticksThisFrame++;
+            }
         }
 
         public void Initialize()
@@ -52,6 +82,12 @@ namespace Game.Core
         private Entity m_clockEntity;
         private Entity m_registryEntity;
         private bool m_initialized = false;
+        private float m_accumulator;
+
+        [SerializeField]
+        private float m_baseTickIntervalMs = 100f;
+        [SerializeField]
+        private int m_maxTicksPerFrame = 5;
 
         private const int mc_mapInitCapacity = 1024; // 일단 예상 가능한 최대 동시 유닛 수 
     }
