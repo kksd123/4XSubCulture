@@ -18,7 +18,11 @@ extern "C" {
 	SIMCORE_API void sim_destroy(Sim* sim);
 	SIMCORE_API void sim_tick(Sim* sim);
 	SIMCORE_API uint64_t sim_current_tick(const Sim* sim);
-	SIMCORE_API int64_t sim_get_posx_raw(const Sim* sim);
+	SIMCORE_API uint64_t sim_spawn(Sim* sim, int64_t posx_raw, int64_t velx_raw);
+	SIMCORE_API int32_t  sim_unit_count(const Sim* sim);
+	SIMCORE_API uint64_t sim_get_unit_simid(const Sim* sim, int32_t index);
+	SIMCORE_API int64_t  sim_get_unit_posx_raw(const Sim* sim, int32_t index);
+	SIMCORE_API int64_t  sim_get_posx_raw_by_id(const Sim* sim, uint64_t sim_id);
 
 #ifdef __cplusplus
 }
