@@ -1,6 +1,9 @@
 ﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Entities;
+using Game.Core.Data;
+using Unity.Transforms;
+using Unity.Mathematics;
 
 namespace Game.Core
 {
@@ -51,6 +54,8 @@ namespace Game.Core
                 clock.currentTick += 1;
                 em.SetComponentData(m_clockEntity, clock);
 
+                m_simRoot.Update();
+
                 m_accumulator -= intervalMs;
                 ticksThisFrame++;
             }
@@ -75,7 +80,60 @@ namespace Game.Core
             m_registryEntity = BCSingleton<SimIdRegistry>.Ensure(em, 
                 new SimIdRegistry { map = new NativeHashMap<ulong, Entity>(mc_mapInitCapacity, Allocator.Persistent), nextId = 1 });
 
+            m_simRoot = m_world.GetOrCreateSystemManaged<SimRootGroup>();
+
+            AddGroup<CommandConsumeGroup>();
+            AddGroup<CombatGroup>();
+            AddGroup<FleetMoveGroup>();
+            AddGroup<VisionGroup>();
+            AddGroup<AISnapshotGroup>();
+            AddGroup<GameDataGroup>();
+            AddGroup<StoryGroup>();
+            AddGroup<DiplomacyGroup>();
+            AddGroup<ChecksumGroup>();
+            AddGroup<RenderSnapshotGroup>();
+
+            AddSystem<HeartBeatSystem, RenderSnapshotGroup>();
+
+            m_simRoot.SortSystems();
+
+            SpawnShips();
+
             m_initialized = true;
+        }
+
+        private void AddGroup<TGroup>() where TGroup : ComponentSystemGroup
+        {
+            var group = m_world.GetOrCreateSystemManaged<TGroup>();
+            m_simRoot.AddSystemToUpdateList(group);
+        }
+
+        private void AddSystem<TSystem, TGroup>()
+            where TSystem : unmanaged, ISystem
+            where TGroup : ComponentSystemGroup
+        {
+            var group = m_world.GetOrCreateSystemManaged<TGroup>();
+            group.AddSystemToUpdateList(m_world.GetOrCreateSystem<TSystem>());
+        }
+
+        private void SpawnShips()
+        {
+            var em = m_world.EntityManager;
+
+            var reg = em.GetComponentData<SimIdRegistry>(m_registryEntity);
+
+            for(int i = 0; i < 3; i++)
+            {
+                var e = em.CreateEntity();
+
+                ulong simId = reg.Register(e);
+                em.AddComponentData(e, new SimIDComponent { Value = simId});
+
+                em.AddComponentData(e, LocalTransform.FromPosition(new float3(i * 2f, 0f, 0f)));
+                em.AddComponentData(e, new ShipMover { velocity = new float3(1f, 0f, 0f)});
+            }
+
+            em.SetComponentData(m_registryEntity, reg);
         }
 
         private World m_world;
@@ -83,6 +141,7 @@ namespace Game.Core
         private Entity m_registryEntity;
         private bool m_initialized = false;
         private float m_accumulator;
+        private SimRootGroup m_simRoot;
 
         [SerializeField]
         private float m_baseTickIntervalMs = 100f;

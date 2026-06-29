@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Game.Core
 {
+    [DisableAutoCreation]
     public partial struct HeartBeatSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
