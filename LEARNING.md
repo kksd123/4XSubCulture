@@ -6,6 +6,7 @@
 - C# 문법: 다소 어렵게 느껴짐
 - 목표: ECS 기초 + 락스텝 네트워크 원리 이해
 
+<<<<<<< HEAD
 ## 진행 방식 (중요 — Claude Code도 이 방식을 따를 것)
 - **개념 설명 위주로 진행한다.** 코드를 던지기 전에 "왜 이렇게 만드는가"를 먼저 설명한다.
 - **코드는 학습자가 직접 타이핑한다.** Claude/Claude Code는 설명 + 코드 제시만 하고, 파일을 직접 만들거나 수정하지 않는다.
@@ -89,6 +90,21 @@ Sim 코어를 **Unity DOTS 안**이 아니라 **Unity 밖 독립 C++ DLL**로 �
 ### 다음: 5단계 — 명령 큐 + 소비
 - 외부 입력(이동·스킬 등)을 `SimCommand`로 큐에 넣고, 틱 소비 시점에 **SimID로 대상 유닛을 찾아** 적용. 락스텝의 유일한 Sim 입구. `sim_enqueue_command` + 틱 정렬·소비. 레지스트리 lookup(`*_by_id`)이 여기서 쓰임. (Harness 5 명령 파이프라인)
 
+=======
+## 진행 방식
+- 개념 설명 위주로 진행
+- 코드는 직접 작성, Claude는 설명과 제시만
+
+---
+
+## 학습 로드맵
+- [x] 1단계: ECS 개념 (Entity / Component / System 이란?)
+- [ ] 2단계: Unity DOTS 실습 (Component, System, Authoring 직접 만들기)
+- [ ] 3단계: 결정적(Deterministic) 시뮬레이션이란?
+- [ ] 4단계: 락스텝 네트워크 원리
+- [ ] 5단계: ECS + 락스텝 합치기
+
+>>>>>>> 6ceb590 (no message)
 ---
 
 ## 1단계 완료: ECS 개념
@@ -96,6 +112,7 @@ Sim 코어를 **Unity DOTS 안**이 아니라 **Unity 밖 독립 C++ DLL**로 �
 ### 핵심 요약
 | 개념 | 역할 |
 |------|------|
+<<<<<<< HEAD
 | Entity | 고유 ID만 있는 껍데기 (주민등록번호). 실제로는 `{int Index, int Version}` |
 | Component | 순수 데이터 (struct, 로직 없음) |
 | System | 로직 담당, Component를 읽고 처리 |
@@ -109,10 +126,22 @@ Sim 코어를 **Unity DOTS 안**이 아니라 **Unity 밖 독립 C++ DLL**로 �
 ## 2단계 (완료·전환됨): 실제 프로젝트 방식 DOTS 실습 — Unity로 개념 습득
 
 > ⚠️ 이 절은 **Unity DOTS로 개념을 익힌 기록**이다. 이후 아키텍처가 C++ 코어로 전환되어, 아래 "다음에 배울 것"의 Unity 구현(SimRootGroup 구동·Query 등)은 **위 "C++ 코어 로드맵"으로 대체**됨. 개념은 유효, 구현 수단만 바뀜.
+=======
+| Entity | 고유 ID만 있는 껍데기 (주민등록번호) |
+| Component | 순수 데이터 (struct, 로직 없음) |
+| System | 로직 담당, Component를 읽고 처리 |
+
+MonoBehaviour와 차이: 데이터와 로직이 분리됨. Component는 메모리에 연속 배치되어 CPU 캐시 효율이 높음.
+
+---
+
+## 2단계 진행중: DOTS 실습
+>>>>>>> 6ceb590 (no message)
 
 ### 설치 완료
 - `com.unity.entities` 패키지 설치됨
 
+<<<<<<< HEAD
 ### 방향 결정
 - Authoring/Baker(씬 GameObject → 베이킹) 방식 **사용 안 함**.
 - 실제 프로젝트는 베이킹 대신 **런타임 스폰 팩토리** 채택 (PROGRESS.md STEP4 "스폰 경로" 참고) — 수동 World 부트스트랩, 런타임 `SimIdRegistry`와 정합되기 때문.
@@ -181,10 +210,50 @@ namespace Game.Core
         public void UnRegister(ulong simId)
         {
             map.Remove(simId);
+=======
+### 설명 완료, 직접 작성 예정인 코드
+
+**MovementComponents.cs**
+```csharp
+using Unity.Entities;
+using Unity.Mathematics;
+
+public struct PositionComponent : IComponentData
+{
+    public float2 Value;
+}
+
+public struct VelocityComponent : IComponentData
+{
+    public float2 Value;
+}
+```
+- `struct` 사용 이유: 메모리 연속 배치
+- `IComponentData`: ECS Component임을 Unity에 알림
+- `float2`: Unity.Mathematics 타입, Burst 호환
+
+**MoveSystem.cs**
+```csharp
+using Unity.Entities;
+using Unity.Burst;
+
+[BurstCompile]
+public partial struct MoveSystem : ISystem
+{
+    public void OnUpdate(ref SystemState state)
+    {
+        float deltaTime = SystemAPI.Time.DeltaTime;
+
+        foreach (var (pos, vel) in
+            SystemAPI.Query<RefRW<PositionComponent>, RefRO<VelocityComponent>>())
+        {
+            pos.ValueRW.Value += vel.ValueRO.Value * deltaTime;
+>>>>>>> 6ceb590 (no message)
         }
     }
 }
 ```
+<<<<<<< HEAD
 - SimID ↔ Entity 변환표. **조회(lookup)만 허용, 순회(foreach) 금지** (Harness HARD RULE: `NativeHashMap` 순회로 Sim 상태 변경 금지 — 조회는 허용).
 - `NativeHashMap`을 쓰는 이유: managed `Dictionary`는 Burst가 못 다룸. `NativeHashMap`은 unmanaged 메모리를 직접 할당/해제하는 컬렉션 (`Allocator.Persistent` 사용 시 직접 `Dispose` 필요).
 - 이 컴포넌트를 World에 **딱 하나만** 존재하는 "ECS 싱글톤"으로 만들 것 — 다음 단계에서 다룸.
@@ -240,3 +309,45 @@ namespace Game.Core
 > "LEARNING.md 읽고, 'C++ 코어 로드맵' 3단계(고정소수점)부터 같은 방식으로 이어서 진행해줘. 코드는 내가 직접 타이핑할 거고, 작업은 C++ 코어(`4XSubCulture\SimCore`)에서 한다. 설명하고 제시만 해줘."
 >
 > (구버전 멘트: 'Unity DOTS 다음에 배울 것 1번 틱 루프…' — 아키텍처 전환으로 폐기.)
+=======
+- `SystemAPI.Query<>()`: 해당 Component를 가진 Entity 전부 조회
+- `RefRW` = Read/Write, `RefRO` = Read Only
+- `[BurstCompile]`: 네이티브 코드 컴파일, 성능 향상
+
+**MoveAuthoring.cs**
+```csharp
+using Unity.Entities;
+using Unity.Mathematics;
+using UnityEngine;
+
+public class MoveAuthoring : MonoBehaviour
+{
+    public Vector2 velocity;
+}
+
+public class MoveBaker : Baker<MoveAuthoring>
+{
+    public override void Bake(MoveAuthoring authoring)
+    {
+        var entity = GetEntity(TransformUsageFlags.None);
+        AddComponent(entity, new PositionComponent { Value = float2.zero });
+        AddComponent(entity, new VelocityComponent 
+        { 
+            Value = new float2(authoring.velocity.x, authoring.velocity.y) 
+        });
+    }
+}
+```
+- Authoring: 씬의 GameObject → Baker → Entity로 변환하는 Unity 권장 방식
+
+### 다음 세션에서 할 것
+1. 위 3개 파일 직접 작성
+2. 씬에 SubScene 설정
+3. GameObject에 MoveAuthoring 붙이기
+4. Play 모드에서 Entity Inspector로 확인
+
+---
+
+## 다음 세션 시작 멘트 예시
+> "LEARNING.md 읽고 2단계 이어서 진행해줘"
+>>>>>>> 6ceb590 (no message)
